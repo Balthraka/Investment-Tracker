@@ -169,12 +169,23 @@ tr:last-child td{border-bottom:none;}
 #empty-state h2{font-size:20px;font-weight:600;margin-bottom:8px;}
 #empty-state p{color:var(--text-2);max-width:400px;margin:0 auto;}
 /* MISC */
-.rate-badge{display:inline-block;font-size:10px;padding:2px 6px;border-radius:var(--radius-sm);font-family:var(--mono);margin-left:6px;font-weight:500;}
 .rate-ok{background:var(--gain-bg);color:var(--gain);}
 .rate-err{background:var(--warn-bg);color:var(--warn);}
 .filter-sep{width:1px;height:20px;background:var(--border);flex-shrink:0;}
+.filter-select{font-size:11px;padding:4px 8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text-1);font-family:var(--mono);cursor:pointer;}
+th .sort-ind{font-size:9px;color:var(--accent);margin-left:2px;}
+th:hover{background:var(--surface-alt,var(--surface));}
+.skip-log{margin-top:10px;display:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.skip-log-hdr{padding:8px 12px;font-size:11px;font-weight:600;color:var(--warn);cursor:pointer;display:flex;justify-content:space-between;background:var(--warn-bg);}
+.skip-log table{width:100%;border-collapse:collapse;font-size:11px;}
+.skip-log td{padding:5px 10px;border-bottom:1px solid var(--border);vertical-align:top;}
+.skip-log td:first-child{color:var(--text-3);font-family:var(--mono);white-space:nowrap;width:60px;}
+.skip-log td:last-child{color:var(--loss);}
+.skip-log tr:last-child td{border-bottom:none;}
 .clear-file{margin-top:6px;font-size:11px;color:var(--text-3);cursor:pointer;background:none;border:none;padding:0;display:none;text-decoration:underline;}
 .clear-file.show{display:inline-block;}
+.rate-badge{font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;cursor:help;position:relative;}
+.rate-badge[title]:hover::after{content:attr(title);position:absolute;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:11px;color:var(--text-1);z-index:50;box-shadow:var(--shadow-md);width:max-content;max-width:260px;white-space:normal;line-height:1.4;}
 .clear-file:hover{color:var(--loss);}
 </style>
 </head>
@@ -184,6 +195,7 @@ tr:last-child td{border-bottom:none;}
   <div class="logo">folio<span>.</span></div>
   <div class="spacer"></div>
   <span id="rate-badge"></span>
+  <span id="index-badge"></span>
   <button class="hbtn" onclick="openSettings()">⚙ Settings</button>
   <button class="hbtn" id="btn-theme" onclick="toggleTheme()">◐ Dark</button>
 </div>
@@ -207,7 +219,7 @@ tr:last-child td{border-bottom:none;}
     </div>
 
     <div class="toggle-row">
-      <span style="flex:1;font-size:12px;font-weight:500;">DRP shares already in transactions CSV</span>
+      <span style="flex:1;font-size:12px;font-weight:500;">DRP shares already in my transactions CSV</span>
       <div style="flex-shrink:0;width:40px;">
         <div onclick="toggleDRP()" id="drp-track" style="position:relative;width:40px;height:22px;background:var(--accent);border-radius:20px;cursor:pointer;transition:background .2s;">
           <div id="drp-knob" style="position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:3px;left:21px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.25);"></div>
@@ -281,69 +293,20 @@ tr:last-child td{border-bottom:none;}
         <input type="file" accept=".csv" id="tx-file-input" onchange="handleTxUpload(event)">
         <div class="loaded-status" id="tx-status"></div>
         <button class="clear-file" id="tx-clear-btn" onclick="clearTx()">✕ Remove file</button>
+        <div class="skip-log" id="tx-skip-log"><div class="skip-log-hdr" onclick="this.parentElement.querySelector('table').style.display=this.parentElement.querySelector('table').style.display==='none'?'table':'none'"><span id="tx-skip-label"></span><span>▾</span></div><table id="tx-skip-table" style="display:none;"></table></div>
       </div>
       <div class="upload-card">
         <h3>💰 Dividends</h3>
-        <p>Date · Ticker · Total Amount · Reinvested (Yes/No)</p>
+        <p>Date · Ticker · Total Amount · Reinvested (Yes/No) · DRP Price (optional)</p>
         <input type="file" accept=".csv" id="div-file-input" onchange="handleDivUpload(event)">
         <div class="loaded-status" id="div-status"></div>
         <button class="clear-file" id="div-clear-btn" onclick="clearDiv()">✕ Remove file</button>
+        <div class="skip-log" id="div-skip-log"><div class="skip-log-hdr" onclick="this.parentElement.querySelector('table').style.display=this.parentElement.querySelector('table').style.display==='none'?'table':'none'"><span id="div-skip-label"></span><span>▾</span></div><table id="div-skip-table" style="display:none;"></table></div>
       </div>
     </div>
     <div id="go-btn-row">
       <button class="btn primary" style="padding:10px 28px;font-size:14px;" onclick="handleGo()">Load Dashboard →</button>
       <small>You can upload the second file first if needed</small>
-    </div>
-    <div class="upload-hint" style="margin-top:14px;">
-      <strong>Ticker format:</strong> <code>ASX:TLS</code> <code>NYSE:AAPL</code> <code>NASDAQ:MSFT</code> <code>LSE:SHEL</code>
-      &nbsp;|&nbsp; <strong>Sells:</strong> negative volume e.g. <code>-100</code>
-      &nbsp;|&nbsp; <strong>Dates:</strong> <code>YYYY-MM-DD</code> or <code>DD/MM/YYYY</code>
-    </div>
-    <!-- Format guide -->
-    <div class="fmt-guide">
-      <div class="fmt-guide-lbl">CSV Format Reference</div>
-      <div class="fmt-tables">
-        <div class="fmt-card">
-          <div class="fmt-card-head">📊 Transactions — 5 required columns + 1 optional</div>
-          <div class="fmt-card-body">
-            <table>
-              <thead><tr><th>Column</th><th>Format</th><th>Example</th></tr></thead>
-              <tbody>
-                <tr><td class="lbl">Date</td><td class="dim">YYYY-MM-DD or DD/MM/YYYY</td><td class="ex">2024-03-15</td></tr>
-                <tr><td class="lbl">Ticker</td><td class="dim">EXCHANGE:SYMBOL</td><td class="ex">ASX:CBA</td></tr>
-                <tr><td class="lbl">Volume</td><td class="dim">Positive = buy, negative = sell</td><td class="ex">100 or -50</td></tr>
-                <tr><td class="lbl">Price</td><td class="dim">Price per share at transaction</td><td class="ex">98.50</td></tr>
-                <tr><td class="lbl">Brokerage</td><td class="dim">Fee paid (0 if none)</td><td class="ex">9.95</td></tr>
-                <tr class="opt-row"><td class="lbl">Current Price <span style="font-weight:400;color:var(--text-3);font-size:10px;">optional</span></td><td class="dim">Today's price — once per ticker is enough</td><td class="ex">104.20</td></tr>
-              </tbody>
-            </table>
-            <div class="fmt-note"><strong>Exchanges:</strong> ASX · NYSE · NASDAQ · LSE · TSX · NZX · HKEx · SGX · FRA and more<br><strong>Current Price:</strong> leave blank on all rows except one per ticker.</div>
-          </div>
-        </div>
-        <div class="fmt-card">
-          <div class="fmt-card-head">💰 Dividends — 4 columns</div>
-          <div class="fmt-card-body">
-            <table>
-              <thead><tr><th>Column</th><th>Format</th><th>Example</th></tr></thead>
-              <tbody>
-                <tr><td class="lbl">Date</td><td class="dim">YYYY-MM-DD or DD/MM/YYYY</td><td class="ex">2024-06-15</td></tr>
-                <tr><td class="lbl">Ticker</td><td class="dim">EXCHANGE:SYMBOL</td><td class="ex">ASX:CBA</td></tr>
-                <tr><td class="lbl">Amount</td><td class="dim">Total amount received</td><td class="ex">243.50</td></tr>
-                <tr><td class="lbl">Reinvested</td><td class="dim">Yes or No</td><td class="ex">No</td></tr>
-              </tbody>
-            </table>
-            <div class="fmt-note"><strong>Reinvested = Yes:</strong> dividend was taken as new shares (DRP). Toggle in Settings if those shares are also in transactions to avoid double-counting.</div>
-          </div>
-        </div>
-      </div>
-      <div class="example-block">
-        <div class="elbl">Example transactions CSV:</div>
-        <pre>Date,Ticker,Volume,Price,Brokerage,CurrentPrice
-2022-03-10,ASX:CBA,100,98.50,9.95,
-2023-08-22,NYSE:AAPL,50,178.20,0,192.50
-2024-01-15,ASX:CBA,-30,112.00,9.95,</pre>
-        <div class="enote">CurrentPrice only needs one entry per ticker. Leave blank for other rows. Sells use negative volume.</div>
-      </div>
     </div>
   </div>
 
@@ -361,12 +324,25 @@ tr:last-child td{border-bottom:none;}
           <button class="pill active" onclick="applyCustomRange()">Apply</button>
         </div>
       </div>
+      <div class="filter-sep"></div>
+      <div class="filter-group">
+        <span class="filter-label">Benchmark</span>
+        <select class="filter-select" id="benchmark-sel" onchange="onBenchmarkChange(this.value)">
+          <option value="auto">Auto-select</option>
+          <option value="^GSPC">S&amp;P 500</option>
+          <option value="^AXJO">ASX 200</option>
+          <option value="^IXIC">NASDAQ</option>
+          <option value="^DJI">Dow Jones</option>
+          <option value="^FTSE">FTSE 100</option>
+        </select>
+      </div>
     </div>
 
     <div id="kpi-row">
       <div class="kpi accent">
-        <div class="kpi-label">Portfolio Value</div>
+        <div class="kpi-label">Market Value</div>
         <div class="kpi-value" id="kpi-value">—</div>
+        <div class="kpi-sub" id="kpi-value-sub" style="font-size:10px;"></div>
         <div class="kpi-sub" id="kpi-holdings-count"></div>
       </div>
       <div class="kpi">
@@ -380,36 +356,34 @@ tr:last-child td{border-bottom:none;}
         <div class="kpi-sub" id="kpi-unrealized-pct"></div>
       </div>
       <div class="kpi" id="kpi-real-card">
-        <div class="kpi-label">Realised P&amp;L</div>
+        <div class="kpi-label">Realised incl. Dividends</div>
         <div class="kpi-value" id="kpi-realized">—</div>
         <div class="kpi-sub" id="kpi-realized-pct"></div>
+        <div class="kpi-sub" id="kpi-realized-breakdown" style="margin-top:2px;font-size:10px;"></div>
       </div>
       <div class="kpi" id="kpi-total-card">
         <div class="kpi-label">Total Return</div>
         <div class="kpi-value" id="kpi-total-return">—</div>
         <div class="kpi-sub" id="kpi-total-return-sub"></div>
+        <div class="kpi-sub" id="kpi-total-return-ann" style="margin-top:2px;font-size:10px;"></div>
       </div>
-      <div class="kpi" id="kpi-div-card" style="display:none;">
-        <div class="kpi-label">Dividends</div>
-        <div class="kpi-value" id="kpi-dividends">—</div>
-        <div class="kpi-sub" id="kpi-dividends-sub"></div>
-      </div>
+
     </div>
 
     <div class="chart-grid-2">
       <div class="chart-card">
-        <h3>Capital Deployed — All Time</h3>
-        <div class="chart-sub">Cumulative net invested vs current portfolio value</div>
+        <h3 id="capital-chart-title">Capital Deployed</h3>
+        <div class="chart-sub" id="capital-chart-sub">Cumulative net invested vs current portfolio value</div>
         <div class="chart-wrap" style="height:260px;"><canvas id="chart-invested"></canvas></div>
       </div>
       <div class="chart-card">
         <h3>Returns vs Benchmark</h3>
-        <div class="chart-sub" id="bm-chart-sub">Your portfolio return vs manually entered benchmark</div>
+        <div class="chart-sub" id="bm-chart-sub">Portfolio vs benchmark index</div>
         <div class="chart-wrap" style="height:260px;">
           <canvas id="chart-benchmark" style="display:none;"></canvas>
           <div class="no-data-msg" id="bm-no-data">
             <span style="font-size:24px;">📊</span>
-            Enter a benchmark return in Settings to compare
+            No benchmark data available for this period
           </div>
         </div>
       </div>
@@ -417,9 +391,22 @@ tr:last-child td{border-bottom:none;}
 
     <div class="chart-grid-2">
       <div class="chart-card">
-        <h3>Winners &amp; Losers</h3>
-        <div class="chart-sub">Total P&amp;L by stock (realised + unrealised)</div>
-        <div class="chart-wrap" style="height:260px;"><canvas id="chart-wl"></canvas></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;gap:8px;flex-wrap:wrap;">
+          <h3 style="margin:0;">Winners &amp; Losers</h3>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            <div style="display:flex;gap:4px;" id="wl-toggle">
+              <button class="pill active" data-mode="combined" onclick="setWLMode(this)">Combined</button>
+              <button class="pill" data-mode="unrealized" onclick="setWLMode(this)">Unrealised</button>
+              <button class="pill" data-mode="realized" onclick="setWLMode(this)">Realised</button>
+            </div>
+            <div style="display:flex;gap:4px;" id="wl-val-toggle">
+              <button class="pill active" data-vmode="dollar" onclick="setWLValMode(this)">$</button>
+              <button class="pill" data-vmode="pct" onclick="setWLValMode(this)">%</button>
+            </div>
+          </div>
+        </div>
+        <div class="chart-sub" id="wl-chart-sub">All-time P&amp;L by stock</div>
+        <div class="chart-wrap" style="height:320px;"><canvas id="chart-wl"></canvas></div>
       </div>
       <div class="chart-card" id="div-chart-card" style="display:none;">
         <h3>Dividend Income</h3>
@@ -436,14 +423,18 @@ tr:last-child td{border-bottom:none;}
       </div>
       <div class="tbl-wrap">
         <table>
-          <thead><tr>
-            <th>Ticker</th>
-            <th class="r">Shares</th>
-            <th class="r">Avg Cost</th>
-            <th class="r">Current Price</th>
-            <th class="r" id="holdings-mv-header">Market Value</th>
-            <th class="r">Unrealised P&amp;L</th>
-            <th class="r">Return %</th>
+          <thead><tr id="holdings-thead-row">
+            <th onclick="sortHoldings('ticker')" style="cursor:pointer;">Ticker <span class="sort-ind" data-col="ticker"></span></th>
+            <th class="r" onclick="sortHoldings('shares')" style="cursor:pointer;">Shares <span class="sort-ind" data-col="shares"></span></th>
+            <th class="r" onclick="sortHoldings('avgCost')" style="cursor:pointer;">Avg Cost <span class="sort-ind" data-col="avgCost"></span></th>
+            <th class="r" onclick="sortHoldings('currentPrice')" style="cursor:pointer;">Current Price <span class="sort-ind" data-col="currentPrice"></span></th>
+            <th class="r" onclick="sortHoldings('marketValue')" id="holdings-mv-header" style="cursor:pointer;">Market Value <span class="sort-ind" data-col="marketValue">▼</span></th>
+            <th class="r" onclick="sortHoldings('realizedPL')" style="cursor:pointer;">Realised P&amp;L <span class="sort-ind" data-col="realizedPL"></span></th>
+            <th class="r" onclick="sortHoldings('realizedPct')" style="cursor:pointer;" title="% of remaining cost basis — not the original invested amount for sold shares">Realised % <span class="sort-ind" data-col="realizedPct"></span></th>
+            <th class="r" onclick="sortHoldings('unrealizedPL')" style="cursor:pointer;">Unrealised P&amp;L <span class="sort-ind" data-col="unrealizedPL"></span></th>
+            <th class="r" onclick="sortHoldings('unrealizedPct')" style="cursor:pointer;">Unrealised % <span class="sort-ind" data-col="unrealizedPct"></span></th>
+            <th class="r" onclick="sortHoldings('totalPL')" style="cursor:pointer;">Total P&amp;L <span class="sort-ind" data-col="totalPL"></span></th>
+            <th class="r" onclick="sortHoldings('totalPct')" style="cursor:pointer;">Total % <span class="sort-ind" data-col="totalPct"></span></th>
           </tr></thead>
           <tbody id="holdings-tbody"></tbody>
         </table>
@@ -480,6 +471,55 @@ tr:last-child td{border-bottom:none;}
     <h2>Your portfolio dashboard</h2>
     <p>Upload a transactions CSV above to get started. Dividends are optional.</p>
   </div>
+
+  <!-- CSV Reference — repositioned by showDashboard/showEmpty -->
+  <div id="csv-reference">
+    <div class="upload-hint" style="margin-top:14px;">
+      <strong>Ticker format:</strong> <code>ASX:TLS</code> <code>NYSE:AAPL</code> <code>NASDAQ:MSFT</code> <code>LSE:SHEL</code>
+      &nbsp;|&nbsp; <strong>Sells:</strong> negative volume e.g. <code>-100</code>
+      &nbsp;|&nbsp; <strong>Dates:</strong> <code>YYYY-MM-DD</code> or <code>DD/MM/YYYY</code>
+    </div>
+    <div class="fmt-guide">
+      <div class="fmt-guide-lbl">CSV Format Reference</div>
+      <div class="fmt-tables">
+        <div class="fmt-card">
+          <div class="fmt-card-head">&#128202; Transactions &#8212; 5 required columns + 1 optional</div>
+          <div class="fmt-card-body">
+            <table>
+              <thead><tr><th>Column</th><th>Format</th><th>Example</th></tr></thead>
+              <tbody>
+                <tr><td class="lbl">Date</td><td class="dim">YYYY-MM-DD or DD/MM/YYYY</td><td class="ex">2024-03-15</td></tr>
+                <tr><td class="lbl">Ticker</td><td class="dim">EXCHANGE:SYMBOL</td><td class="ex">ASX:CBA</td></tr>
+                <tr><td class="lbl">Volume</td><td class="dim">Positive = buy, negative = sell</td><td class="ex">100 or -50</td></tr>
+                <tr><td class="lbl">Price</td><td class="dim">Price per share at transaction</td><td class="ex">98.50</td></tr>
+                <tr><td class="lbl">Brokerage</td><td class="dim">Fee paid (0 if none)</td><td class="ex">9.95</td></tr>
+                <tr class="opt-row"><td class="lbl">Current Price <span style="font-weight:400;color:var(--text-3);font-size:10px;">optional</span></td><td class="dim">Today&#39;s price &#8212; once per ticker is enough</td><td class="ex">104.20</td></tr>
+              </tbody>
+            </table>
+            <div class="fmt-note"><strong>Exchanges:</strong> ASX &#183; NYSE &#183; NASDAQ &#183; LSE &#183; TSX &#183; NZX &#183; HKEx &#183; SGX &#183; FRA and more<br><strong>Current Price:</strong> leave blank on all rows except one per ticker.</div>
+          </div>
+        </div>
+        <div class="fmt-card">
+          <div class="fmt-card-head">&#128176; Dividends &#8212; 4 columns + 1 optional</div>
+          <div class="fmt-card-body">
+            <table>
+              <thead><tr><th>Column</th><th>Format</th><th>Example</th></tr></thead>
+              <tbody>
+                <tr><td class="lbl">Date</td><td class="dim">YYYY-MM-DD or DD/MM/YYYY</td><td class="ex">2024-06-15</td></tr>
+                <tr><td class="lbl">Ticker</td><td class="dim">EXCHANGE:SYMBOL</td><td class="ex">ASX:CBA</td></tr>
+                <tr><td class="lbl">Amount</td><td class="dim">Total amount received</td><td class="ex">243.50</td></tr>
+                <tr><td class="lbl">Reinvested</td><td class="dim">Yes or No</td><td class="ex">No</td></tr>
+                <tr class="opt-row"><td class="lbl">DRP Price <span style="font-weight:400;color:var(--text-3);font-size:10px;">optional</span></td><td class="dim">Price per share at DRP date</td><td class="ex">98.50</td></tr>
+              </tbody>
+            </table>
+            <div class="fmt-note"><strong>DRP Price:</strong> only needed when "DRP shares NOT in transactions" is active. Enables share count &amp; market value tracking for reinvested dividends.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -499,7 +539,16 @@ const BENCHMARKS = {
 // Sources: Yahoo Finance, Bloomberg, official exchange records
 const BM_PRICES = {
   '^GSPC': {
-    '2017-12-29':2673.61,'2018-06-29':2718.37,'2018-12-31':2506.85,
+    '2009-12-31':1115.10,
+    '2010-03-31':1169.43,'2010-06-30':1030.71,'2010-12-31':1257.64,
+    '2011-03-31':1325.83,'2011-06-30':1320.64,'2011-12-30':1257.60,
+    '2012-03-30':1408.47,'2012-06-29':1362.16,'2012-12-31':1426.19,
+    '2013-03-28':1569.19,'2013-06-28':1606.28,'2013-12-31':1848.36,
+    '2014-03-31':1872.34,'2014-06-30':1960.23,'2014-12-31':2058.90,
+    '2015-03-31':2067.89,'2015-06-30':2063.11,'2015-12-31':2043.94,
+    '2016-03-31':2059.74,'2016-06-30':2098.86,'2016-12-30':2238.83,
+    '2017-03-31':2362.72,'2017-06-30':2423.41,'2017-12-29':2673.61,
+    '2018-03-29':2640.87,'2018-06-29':2718.37,'2018-12-31':2506.85,
     '2019-03-29':2834.40,'2019-06-28':2941.76,'2019-12-31':3230.78,
     '2020-03-31':2584.59,'2020-06-30':3100.29,'2020-12-31':3756.07,
     '2021-03-31':3972.89,'2021-06-30':4297.50,'2021-12-31':4766.18,
@@ -509,7 +558,16 @@ const BM_PRICES = {
     '2025-03-31':5611.85,'2025-06-30':6204.70,'2025-12-31':6845.50,
   },
   '^AXJO': {
-    '2017-12-29':6167.3,'2018-06-29':6289.7,'2018-12-31':5646.4,
+    '2009-12-31':4882.7,
+    '2010-03-31':4917.2,'2010-06-30':4342.0,'2010-12-31':4732.2,
+    '2011-03-31':4962.8,'2011-06-30':4714.4,'2011-12-30':4111.0,
+    '2012-03-30':4418.1,'2012-06-29':4022.8,'2012-12-31':4664.6,
+    '2013-03-28':5077.3,'2013-06-28':4802.6,'2013-12-31':5352.2,
+    '2014-03-31':5383.1,'2014-06-30':5395.7,'2014-12-31':5388.6,
+    '2015-03-31':5793.8,'2015-06-30':5485.5,'2015-12-31':5295.9,
+    '2016-03-31':5116.2,'2016-06-30':5309.0,'2016-12-30':5719.1,
+    '2017-03-31':5864.7,'2017-06-30':5764.0,'2017-12-29':6167.3,
+    '2018-03-29':5868.9,'2018-06-29':6289.7,'2018-12-31':5646.4,
     '2019-03-29':6180.5,'2019-06-28':6619.8,'2019-12-31':6684.1,
     '2020-03-31':4816.6,'2020-06-30':5897.9,'2020-12-31':6587.1,
     '2021-03-31':6773.4,'2021-06-30':7257.3,'2021-12-31':7444.6,
@@ -519,7 +577,16 @@ const BM_PRICES = {
     '2025-03-31':7842.4,'2025-06-30':8093.7,'2025-12-31':8714.31,
   },
   '^IXIC': {
-    '2017-12-29':6903.39,'2018-06-29':7510.30,'2018-12-31':6635.28,
+    '2009-12-31':2269.15,
+    '2010-03-31':2397.96,'2010-06-30':2109.24,'2010-12-31':2652.87,
+    '2011-03-31':2781.07,'2011-06-30':2773.52,'2011-12-30':2605.15,
+    '2012-03-30':3091.57,'2012-06-29':2935.05,'2012-12-31':3019.51,
+    '2013-03-28':3267.52,'2013-06-28':3403.25,'2013-12-31':4176.59,
+    '2014-03-31':4199.48,'2014-06-30':4408.18,'2014-12-31':4736.05,
+    '2015-03-31':4900.88,'2015-06-30':5070.03,'2015-12-31':5007.41,
+    '2016-03-31':4869.85,'2016-06-30':4842.67,'2016-12-30':5383.12,
+    '2017-03-31':5911.79,'2017-06-30':6140.42,'2017-12-29':6903.39,
+    '2018-03-29':7063.45,'2018-06-29':7510.30,'2018-12-31':6635.28,
     '2019-03-29':7729.32,'2019-06-28':8006.24,'2019-12-31':8972.60,
     '2020-03-31':7700.10,'2020-06-30':10058.77,'2020-12-31':12888.28,
     '2021-03-31':13246.87,'2021-06-30':14503.95,'2021-12-31':15644.97,
@@ -529,7 +596,16 @@ const BM_PRICES = {
     '2025-03-31':17691.63,'2025-06-30':20017.43,'2025-12-31':23241.99,
   },
   '^DJI': {
-    '2017-12-29':24719.22,'2018-06-29':24271.41,'2018-12-31':23327.46,
+    '2009-12-31':10428.05,
+    '2010-03-31':10856.63,'2010-06-30':9774.02,'2010-12-31':11577.51,
+    '2011-03-31':12319.73,'2011-06-30':12414.34,'2011-12-30':12217.56,
+    '2012-03-30':13212.04,'2012-06-29':12880.09,'2012-12-31':13104.14,
+    '2013-03-28':14578.54,'2013-06-28':14909.60,'2013-12-31':16576.66,
+    '2014-03-31':16457.66,'2014-06-30':16826.60,'2014-12-31':17823.07,
+    '2015-03-31':17776.12,'2015-06-30':17619.51,'2015-12-31':17425.03,
+    '2016-03-31':17685.09,'2016-06-30':17929.99,'2016-12-30':19762.60,
+    '2017-03-31':20663.22,'2017-06-30':21349.63,'2017-12-29':24719.22,
+    '2018-03-29':24103.11,'2018-06-29':24271.41,'2018-12-31':23327.46,
     '2019-03-29':25928.68,'2019-06-28':26599.96,'2019-12-31':28538.44,
     '2020-03-31':21917.16,'2020-06-30':25812.88,'2020-12-31':30606.48,
     '2021-03-31':32981.55,'2021-06-30':34502.51,'2021-12-31':36338.30,
@@ -539,7 +615,16 @@ const BM_PRICES = {
     '2025-03-31':41838.97,'2025-06-30':44968.00,'2025-12-31':48063.29,
   },
   '^FTSE': {
-    '2017-12-29':7687.77,'2018-06-29':7636.93,'2018-12-31':6728.13,
+    '2009-12-31':5412.88,
+    '2010-03-31':5679.64,'2010-06-30':4916.87,'2010-12-31':5899.94,
+    '2011-03-31':5908.76,'2011-06-30':5945.71,'2011-12-30':5572.28,
+    '2012-03-30':5768.45,'2012-06-29':5571.15,'2012-12-31':5897.81,
+    '2013-03-28':6411.74,'2013-06-28':6215.47,'2013-12-31':6749.09,
+    '2014-03-31':6598.37,'2014-06-30':6743.94,'2014-12-31':6566.09,
+    '2015-03-31':6773.04,'2015-06-30':6521.02,'2015-12-31':6242.32,
+    '2016-03-31':6174.90,'2016-06-30':6504.33,'2016-12-30':7142.83,
+    '2017-03-31':7322.92,'2017-06-30':7312.72,'2017-12-29':7687.77,
+    '2018-03-29':7056.61,'2018-06-29':7636.93,'2018-12-31':6728.13,
     '2019-03-29':7279.63,'2019-06-28':7425.63,'2019-12-31':7542.44,
     '2020-03-31':5671.96,'2020-06-30':6169.74,'2020-12-31':6460.52,
     '2021-03-31':6713.75,'2021-06-30':7037.47,'2021-12-31':7384.54,
@@ -574,14 +659,22 @@ const APP = {
     fyCountry: 'AU',
     drpInTransactions: true,
     selectedBenchmark: 'auto',
+    wlValMode: 'dollar',
   },
   filters: {
     period: 'ALL',
     customStart: null,
     customEnd: null,
     benchmark: 'auto',
+    wlMode: 'combined',
+    wlValMode: 'dollar', // 'dollar'|'pct'
+    holdingsSort: {col:'marketValue',dir:-1},
   },
   benchmarkCache: {},  // symbol → { price, ts }
+  parseIssues: {tx:[],div:[]},  // issues from last CSV parse
+  _lastUnrealized: null,
+  _lastAllTimeRealized: null,
+  _lastAllTxs: null,
 };
 
 // ── Settings Persistence ─────────────────────────────────────────
@@ -597,6 +690,8 @@ function applySettingsToUI(){
   $('fy-country-sel').value = s.fyCountry;
   APP.filters.benchmark=s.selectedBenchmark||'auto';
   if($('benchmark-sel')) $('benchmark-sel').value=APP.filters.benchmark;
+  APP.filters.wlValMode=s.wlValMode||'dollar';
+  document.querySelectorAll('#wl-val-toggle .pill').forEach(b=>b.classList.toggle('active',b.dataset.vmode===(s.wlValMode||'dollar')));
   $('input-currency-override-sel').value = s.inputCurrencyOverride;
   $('input-currency-override-row').style.display = s.inputCurrencyMode==='override'?'':'none';
   document.querySelectorAll('#cost-basis-group .radio-opt').forEach(e=>e.classList.toggle('selected',e.dataset.val===s.costBasisMethod));
@@ -613,6 +708,13 @@ function fmt(n, currency, decimals=2){
   const sym=CURRENCY_SYMBOLS[currency]||(currency+' ');
   const sign=n<0?'-':'';
   const abs=Math.abs(n);
+  // JPY has no decimal places and uses larger thresholds
+  const isJPY=currency==='JPY';
+  if(isJPY){
+    if(abs>=1e8) return sign+sym+(abs/1e8).toFixed(1)+'億';
+    if(abs>=1e4) return sign+sym+Math.round(abs/1e3)+'K';
+    return sign+sym+Math.round(abs);
+  }
   if(abs>=1e6) return sign+sym+(abs/1e6).toFixed(2)+'M';
   if(abs>=1e3) return sign+sym+(abs/1e3).toFixed(1)+'K';
   return sign+sym+abs.toFixed(decimals);
@@ -680,12 +782,22 @@ async function fetchRates(base){
       APP.rateCache[`${base}_${to}`]=rate;
       if(rate) APP.rateCache[`${to}_${base}`]=1/rate;
     }
-    $('rate-badge').innerHTML='<span class="rate-badge rate-ok">rates live ✓</span>';
+    updateRateBadge();
     return true;
   } catch(e){
-    $('rate-badge').innerHTML='<span class="rate-badge rate-err">rates unavailable</span>';
+    $('rate-badge').innerHTML='<span class="rate-badge rate-err" title="Currency conversion rates could not be fetched. Mixed-currency portfolios may show incorrect totals.">FX unavailable ⚠</span>';
     return false;
   }
+}
+
+function updateRateBadge(){
+  // Only show badge when portfolio has multiple currencies
+  const currencies=new Set([...APP.transactions.map(t=>t.currency),...APP.dividends.map(d=>d.currency)]);
+  const out=APP.settings.outputCurrency;
+  const needsConversion=currencies.size>1||([...currencies][0]&&[...currencies][0]!==out);
+  if(!needsConversion){$('rate-badge').innerHTML='';return;}
+  const tooltip=`Exchange rates fetched from exchangerate-api.com to convert your holdings to ${out}. Not stock prices.`;
+  $('rate-badge').innerHTML=`<span class="rate-badge rate-ok" title="${tooltip}">FX rates live ✓</span>`;
 }
 
 async function onOutputCurrencyChange(val){
@@ -756,14 +868,8 @@ function parseTransactionsCSV(text){
     });
   }
 
-  if(rows.length===0){
-    showNotice('No valid rows found. Issues: '+issues.slice(0,3).join(' | '),'error');
-  } else if(issues.length>0){
-    const real=issues.filter(i=>!i.includes('assumed NYSE')).length;
-    if(real>0) showNotice(real+' row(s) skipped — first: '+issues[0],'warn');
-  }
   console.log('[Folio]',rows.length,'rows,',issues.length,'issues:',issues);
-  return rows.sort((a,b)=>a.date-b.date);
+  return {rows:rows.sort((a,b)=>a.date-b.date),issues};
 }
 
 function parseDividendsCSV(text){
@@ -778,27 +884,30 @@ function parseDividendsCSV(text){
     const vals=useHeader?Object.values(raw).map(v=>String(v||'').trim()):raw.map(v=>String(v||'').trim());
     if(vals.length<3) continue;
 
-    let col=[0,1,2,3];
+    let col=[0,1,2,3,4];
     if(useHeader){
       const keys=Object.keys(raw).map(k=>k.toLowerCase().trim());
       const find=(names,def)=>{for(const n of names){const i=keys.findIndex(k=>k.includes(n));if(i>=0)return i;}return def;};
       col[0]=find(['date'],0); col[1]=find(['tick','sym','stock'],1);
       col[2]=find(['amount','total','div','income'],2); col[3]=find(['reinv'],3);
+      col[4]=find(['price','drp','px'],4);
     }
 
     const dateStr=vals[col[0]]||'';
     const tickerStr=(vals[col[1]]||'').toUpperCase().replace(/\s/g,'');
     const amtStr=vals[col[2]]||''; const reinvStr=vals[col[3]]||'';
+    const priceStr=vals[col[4]]||'';
     if(!useHeader&&dateStr.toLowerCase()==='date') continue;
 
     const date=parseDate(dateStr);
     const amount=parseFloat(amtStr.replace(/[$,\s]/g,''));
     if(!date||!tickerStr||isNaN(amount)) continue;
+    const drpPrice=priceStr?parseFloat(priceStr.replace(/[$,\s]/g,'')):null;
 
     const ticker=tickerStr.includes(':')?tickerStr:'NYSE:'+tickerStr;
-    rows.push({date,ticker,amount,reinvested:/^yes$/i.test(reinvStr.trim()),currency:getTickerCurrency(ticker)});
+    rows.push({date,ticker,amount,reinvested:/^yes$/i.test(reinvStr.trim()),drpPrice:drpPrice&&!isNaN(drpPrice)?drpPrice:null,currency:getTickerCurrency(ticker)});
   }
-  return rows.sort((a,b)=>a.date-b.date);
+  return {rows:rows.sort((a,b)=>a.date-b.date),issues:[]};
 }
 
 // ── Manual Prices ─────────────────────────────────────────────────
@@ -907,24 +1016,24 @@ function computeUnrealizedPL(lots){
   const byTicker={};
   for(const [ticker,lotArr] of Object.entries(lots)){
     if(!lotArr.length) continue;
-    const tx=APP.transactions.find(t=>t.ticker===ticker);
-    if(!tx) continue;
+    // Use currency from lots directly — works for both real and virtual DRP transactions
+    const lotCurrency=lotArr[0]?.currency||'USD';
     const cached=APP.priceCache[ticker];
     const currentPrice=cached?.price??null;
-    const priceCurrency=cached?.currency||tx.currency;
+    const priceCurrency=cached?.currency||lotCurrency;
     const totalShares=lotArr.reduce((s,l)=>s+l.shares,0);
     const totalCostBasis=lotArr.reduce((s,l)=>s+l.shares*l.costPerShare,0);
-    const costConv=toOut(totalCostBasis,tx.currency);
+    const costConv=toOut(totalCostBasis,lotCurrency);
     const valueConv=currentPrice!=null?toOut(totalShares*currentPrice,priceCurrency):costConv;
     byTicker[ticker]={shares:totalShares,avgCost:totalCostBasis/totalShares,currentPrice,priceCurrency,
-      unrealizedPL:valueConv-costConv,marketValue:valueConv,costBasis:costConv,currency:tx.currency,source:cached?.source};
+      unrealizedPL:valueConv-costConv,marketValue:valueConv,costBasis:costConv,currency:lotCurrency,source:cached?.source};
     totalValue+=valueConv; totalCost+=costConv;
   }
   return {byTicker,totalValue,totalCost,totalUnrealized:totalValue-totalCost};
 }
 
-function computeNetInvestedOverTime(transactions){
-  const sorted=[...transactions].sort((a,b)=>a.date-b.date);
+function computeNetInvestedOverTime(transactions, endDate){
+  const sorted=[...transactions].filter(tx=>!endDate||tx.date<=endDate).sort((a,b)=>a.date-b.date);
   const months={};
   for(const tx of sorted){
     const key=`${tx.date.getFullYear()}-${String(tx.date.getMonth()+1).padStart(2,'0')}`;
@@ -937,16 +1046,19 @@ function computeNetInvestedOverTime(transactions){
 }
 
 function computeDividendIncome(dividends,range){
-  const effective=APP.settings.drpInTransactions?dividends.filter(d=>!d.reinvested):dividends;
-  let total=0; const byMonth={};
-  for(const d of effective){
+  // Dividend income is always the full amount earned — the DRP toggle
+  // only controls whether virtual BUY transactions are generated from
+  // reinvested dividends, not how much income is counted.
+  let total=0,totalReinvested=0; const byMonth={};
+  for(const d of dividends){
     if(!inRange(d.date,range)) continue;
     const amt=toOut(d.amount,d.currency);
     total+=amt;
+    if(d.reinvested) totalReinvested+=amt;
     const key=`${d.date.getFullYear()}-${String(d.date.getMonth()+1).padStart(2,'0')}`;
     byMonth[key]=(byMonth[key]||0)+amt;
   }
-  return {total,byMonth};
+  return {total,totalReinvested,byMonth};
 }
 
 // ── Period Pills ──────────────────────────────────────────────────
@@ -970,12 +1082,28 @@ function rebuildPeriodPills(){
 
   const container=$('period-pills');
   container.innerHTML='';
-  for(const p of periods){
+  // Show fixed pills + most recent 8 years by default; rest in expandable group
+  const fixedVals=['ALL','YTD','1Y','CUSTOM'];
+  const yearPills=periods.filter(p=>!fixedVals.includes(p.val));
+  const visibleYears=yearPills.slice(0,8);
+  const hiddenYears=yearPills.slice(8);
+  const activeInHidden=hiddenYears.some(p=>p.val===APP.filters.period);
+  const showAll=activeInHidden||container.dataset.expanded==='1';
+
+  for(const p of [...periods.filter(p=>fixedVals.includes(p.val)&&p.val!=='CUSTOM'),...(showAll?yearPills:visibleYears),periods.find(p=>p.val==='CUSTOM')]){
+    if(!p) continue;
     const el=document.createElement('div');
     el.className='pill'+(APP.filters.period===p.val?' active':'');
     el.textContent=p.label;
     el.onclick=()=>setPeriod(p.val);
     container.appendChild(el);
+  }
+  if(hiddenYears.length&&!showAll){
+    const more=document.createElement('div');
+    more.className='pill';
+    more.textContent='+ '+hiddenYears.length+' more';
+    more.onclick=()=>{container.dataset.expanded='1';rebuildPeriodPills();};
+    container.appendChild(more);
   }
 }
 
@@ -1012,18 +1140,20 @@ function applyCustomRange(){
 }
 
 // ── Net Deployed ──────────────────────────────────────────────────
-function computeNetDeployed(){
-  // Total cash in minus total proceeds out — all time
+function computeNetDeployed(transactions,range){
+  // Net cash deployed within the period (buys minus sell proceeds)
   let deployed=0;
-  for(const tx of APP.transactions){
+  for(const tx of transactions){
+    if(range&&!inRange(tx.date,range)) continue;
     const cost=tx.volume*tx.price+tx.brokerage;
     deployed+=tx.type==='BUY'?toOut(cost,tx.currency):-toOut(tx.volume*tx.price-tx.brokerage,tx.currency);
   }
   return deployed;
 }
 
-function hasMixedCurrencies(){
-  const cur=new Set(APP.transactions.map(t=>t.currency));
+function hasMixedCurrencies(txs){
+  const src=txs||APP.transactions;
+  const cur=new Set(src.map(t=>t.currency));
   return cur.size>1;
 }
 
@@ -1031,9 +1161,10 @@ function hasMixedCurrencies(){
 function getEffectiveBenchmark(){
   const sel=APP.filters.benchmark;
   if(sel!=='auto') return sel;
-  // Auto: dominant currency in portfolio
+  // Auto: dominant currency in portfolio (transactions + dividends)
   const counts={};
   for(const tx of APP.transactions) counts[tx.currency]=(counts[tx.currency]||0)+tx.volume*tx.price;
+  for(const dv of APP.dividends) counts[dv.currency]=(counts[dv.currency]||0)+dv.amount;
   const dom=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0]?.[0];
   if(dom==='AUD') return '^AXJO';
   if(dom==='GBP') return '^FTSE';
@@ -1049,7 +1180,7 @@ function findNearestPrice(symbol, date){
     if(diff<bestDiff){bestDiff=diff;best=v;}
   }
   // Reject if nearest point is >180 days away — data too stale to be meaningful
-  const MAX_STALE_MS=180*24*60*60*1000;
+  const MAX_STALE_MS=200*24*60*60*1000;
   return bestDiff<MAX_STALE_MS?best:null;
 }
 
@@ -1061,8 +1192,9 @@ function periodEndsToday(range){
 function calcBenchmarkReturn(symbol, range, livePrice){
   const data=BM_PRICES[symbol]; if(!data) return null;
   const now=new Date();
-  // Start price
-  const txDates=APP.transactions.map(t=>t.date.getTime());
+  // Start price — use allTxs (includes virtual DRP) if available
+  const allTxRef=APP._lastAllTxs||APP.transactions;
+  const txDates=allTxRef.map(t=>t.date.getTime());
   const startDate=range.start||(txDates.length?new Date(Math.min(...txDates)):new Date());
   const startPrice=findNearestPrice(symbol,startDate);
   if(!startPrice) return null;
@@ -1080,27 +1212,85 @@ function calcBenchmarkReturn(symbol, range, livePrice){
 // Single live price fetch for benchmark — one call, two proxies, graceful fail
 async function fetchBenchmarkLivePrice(symbol){
   const cache=APP.benchmarkCache[symbol];
-  if(cache&&Date.now()-cache.ts<3600000) return cache.price; // 1h cache
-  const yUrl=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1d`;
+  if(cache&&Date.now()-cache.ts<3600000){
+    updateIndexBadge(symbol,cache.ts,true); // already cached
+    return cache.price;
+  }
+  // Try multiple Yahoo endpoints and proxies for resilience
+  const sym=encodeURIComponent(symbol);
+  const urls=[
+    `https://query2.finance.yahoo.com/v8/finance/chart/${sym}?range=1d&interval=1d`,
+    `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=1d&interval=1d`,
+    `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${sym}`,
+  ];
   const proxies=[
     u=>`https://corsproxy.io/?url=${encodeURIComponent(u)}`,
     u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
   ];
-  for(const proxy of proxies){
-    try{
-      const resp=await Promise.race([
-        fetch(proxy(yUrl)),
-        new Promise((_,r)=>setTimeout(()=>r(new Error('timeout')),6000)),
-      ]);
-      if(!resp.ok) continue;
-      const text=await resp.text();
-      const json=JSON.parse(text);
-      const data=json.contents?JSON.parse(json.contents):json;
-      const price=data?.chart?.result?.[0]?.meta?.regularMarketPrice;
-      if(price){APP.benchmarkCache[symbol]={price,ts:Date.now()};return price;}
-    }catch(e){continue;}
+  for(const yUrl of urls){
+    for(const proxy of proxies){
+      try{
+        const resp=await Promise.race([
+          fetch(proxy(yUrl),{cache:'no-store'}),
+          new Promise((_,r)=>setTimeout(()=>r(new Error('timeout')),8000)),
+        ]);
+        if(!resp.ok) continue;
+        const text=await resp.text();
+        let parsed;
+        try{ parsed=JSON.parse(text); }catch(e){ continue; }
+        // allorigins wraps response in .contents
+        const data=parsed.contents?JSON.parse(parsed.contents):parsed;
+        // v8/chart endpoint
+        let price=data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+        // v7/quote endpoint
+        if(!price) price=data?.quoteResponse?.result?.[0]?.regularMarketPrice;
+        if(price&&price>0){const ts=Date.now();APP.benchmarkCache[symbol]={price,ts};updateIndexBadge(symbol,ts,true);return price;}
+      }catch(e){continue;}
+    }
   }
+  updateIndexBadge(symbol,null,false);
   return null; // graceful fail — will use hardcoded nearest
+}
+
+function setWLValMode(btn){
+  APP.filters.wlValMode=btn.dataset.vmode;
+  APP.settings.wlValMode=btn.dataset.vmode;
+  saveSettings();
+  document.querySelectorAll('#wl-val-toggle .pill').forEach(b=>b.classList.toggle('active',b===btn));
+  renderWinnersLosers(APP._lastUnrealized,APP._lastAllTimeRealized);
+}
+
+function setWLMode(btn){
+  APP.filters.wlMode=btn.dataset.mode;
+  document.querySelectorAll('#wl-toggle .pill').forEach(b=>b.classList.toggle('active',b===btn));
+  renderWinnersLosers(APP._lastUnrealized,APP._lastAllTimeRealized);
+}
+
+function updateIndexBadge(symbol,ts,live){
+  const bm=BENCHMARKS[symbol];
+  const name=bm?bm.name:symbol;
+  const el=$('index-badge');
+  if(!el) return;
+  if(live&&ts){
+    const t=new Date(ts);
+    const timeStr=t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    const tooltip=`Last live price fetched for ${name} at ${t.toLocaleString()}. Updates every hour.`;
+    el.innerHTML=`<span class="rate-badge rate-ok" title="${tooltip}">${name} live ✓ ${timeStr}</span>`;
+  } else {
+    // Find nearest hardcoded date for this symbol
+    const data=BM_PRICES[symbol];
+    let nearestDate='unknown date';
+    if(data){
+      const now=new Date();
+      let bestDiff=Infinity;
+      for(const d of Object.keys(data)){
+        const diff=Math.abs(new Date(d).getTime()-now.getTime());
+        if(diff<bestDiff){bestDiff=diff;nearestDate=d;}
+      }
+    }
+    const tooltip=`Could not fetch live price for ${name}. Using hardcoded close from ${nearestDate}.`;
+    el.innerHTML=`<span class="rate-badge rate-err" title="${tooltip}">${name} · ${nearestDate}</span>`;
+  }
 }
 
 function onBenchmarkChange(val){
@@ -1117,24 +1307,63 @@ function onBenchmarkChange(val){
 
 // ── Dashboard Rebuild ─────────────────────────────────────────────
 function rebuildDashboard(){
+  try{ _rebuildDashboard(); } catch(e){ showNotice("Dashboard error: "+e.message,"error"); console.error("rebuildDashboard error:",e); }
+}
+function _rebuildDashboard(){
   const txs=APP.transactions,divs=APP.dividends;
   if(!txs.length&&!divs.length){showEmpty();return;}
   showDashboard();
+
+  // When DRP toggle is OFF, build virtual BUY transactions from reinvested dividends
+  // that have a DRP price. These are transient — not stored in APP.transactions.
+  // Virtual DRP BUYs: use drpPrice from dividends CSV col 5, fall back to priceCache
+  const virtualDRP=(!APP.settings.drpInTransactions)
+    ?divs.filter(d=>d.reinvested).map((d,i)=>{
+        const p=d.drpPrice||(APP.priceCache[d.ticker]?.price??null);
+        if(!p||p<=0) return null; // no price available — skip
+        return {
+          id:'drp-'+i,
+          date:d.date,
+          ticker:d.ticker,
+          exchange:d.ticker.split(':')[0]||'',
+          symbol:d.ticker.split(':')[1]||d.ticker,
+          volume:d.amount/p,
+          type:'BUY',
+          price:p,
+          brokerage:0,
+          manualPrice:null,
+          currency:d.currency,
+          virtual:true,
+        };
+      }).filter(Boolean)
+    :[];
+  const allTxs=[...txs,...virtualDRP];
   const range=getDateRange(),out=APP.settings.outputCurrency,method=APP.settings.costBasisMethod;
 
-  const lots=buildLots(txs,method,null);
+  const lotsEndDate=range.end||null; // unrealized as of period end
+  const lots=buildLots(allTxs,method,lotsEndDate);
   const unrealized=computeUnrealizedPL(lots);
-  const realized=computeRealizedPL(txs,method,range);
+  const realized=computeRealizedPL(allTxs,method,range);
   const divIncome=computeDividendIncome(divs,range);
 
-  const netDeployed=computeNetDeployed();
+  const netDeployed=computeNetDeployed(allTxs,range);
   const portfolioValue=unrealized.totalValue;
   const costBasis=unrealized.totalCost;
   const totalReturn=unrealized.totalUnrealized+realized.total+divIncome.total;
   const totalReturnPct=netDeployed>0?(totalReturn/netDeployed)*100:null;
 
+  // Annualised (CAGR) — requires >3 months of history
+  const firstDate=allTxs.length?new Date(Math.min(...allTxs.map(t=>t.date.getTime()))):null;
+  const periodEnd=range.end||new Date();
+  const periodStart=range.start||firstDate; // use filter start if set, else first transaction
+  const holdingYears=periodStart?(periodEnd-periodStart)/(365.25*24*60*60*1000):0;
+  const sinceLabel=periodStart?periodStart.toLocaleDateString('en-AU',{month:'short',year:'numeric'}):'';
+  const annualisedPct=(holdingYears>=0.25&&netDeployed>0&&totalReturn/netDeployed>-1)
+    ?(Math.pow(1+(totalReturn/netDeployed),1/holdingYears)-1)*100
+    :null;
+
   // Warn if mixed currencies and rates unavailable
-  if(hasMixedCurrencies()&&Object.keys(APP.rateCache).length===0&&APP.transactions.length){
+  if(hasMixedCurrencies(allTxs)&&Object.keys(APP.rateCache).length===0&&APP.transactions.length){
     showNotice('Mixed currencies detected but exchange rates unavailable — figures may be inaccurate.','warn');
   }
 
@@ -1143,14 +1372,18 @@ function rebuildDashboard(){
   $('kpi-value').textContent=fmt(portfolioValue,out);
   $('kpi-value').className='kpi-value'+(hasPrices?'':' muted');
   const openCount=Object.keys(unrealized.byTicker).length;
-  $('kpi-holdings-count').textContent=openCount+' positions'+(priceCount>0?` · ${priceCount} priced`:' · at cost — add prices');
+  const periodDesc=APP.filters.period==='ALL'?'all open positions':
+    (range.end&&range.end<new Date()?`positions as of ${range.end.toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})}`:'all open positions');
+  $('kpi-value-sub').textContent=hasPrices?`Current market value — ${periodDesc}`:`Cost basis — no prices loaded`;
+  $('kpi-value-sub').className='kpi-sub'+(hasPrices?'':' muted');
+  $('kpi-holdings-count').textContent=openCount+' position'+(openCount!==1?'s':'')+(priceCount>0?` · ${priceCount} priced`:' · no prices');
 
   $('kpi-invested').textContent=fmt(netDeployed,out);
-  $('kpi-invested-sub').textContent='Net cash deployed (buys − proceeds)';
+  const investedLabel=APP.filters.period==='ALL'?'All-time net cash deployed':'Period net cash deployed';
+  $('kpi-invested-sub').textContent=investedLabel;
 
   const ur=unrealized.totalUnrealized;
-  const hasPricesKPI=hasPrices;
-  if(hasPricesKPI){
+  if(hasPrices){
     setKPI('kpi-unrealized','kpi-unrealized-pct','kpi-unreal-card',ur,costBasis>0?(ur/costBasis)*100:0,out);
   } else {
     $('kpi-unrealized').textContent='—'; $('kpi-unrealized').className='kpi-value';
@@ -1158,37 +1391,42 @@ function rebuildDashboard(){
     $('kpi-unreal-card').className='kpi';
   }
 
-  // Realized % shown as absolute only — no meaningful single denominator
-  const rl=realized.total;
+  const rl=realized.total+divIncome.total;
+  const rlPos=rl>=0;
   $('kpi-realized').textContent=fmt(rl,out);
-  $('kpi-realized').className='kpi-value '+(rl>=0?'gain':'loss');
-  $('kpi-realized-pct').textContent='period realized';
+  $('kpi-realized').className='kpi-value '+(rlPos?'gain':'loss');
+  $('kpi-realized-pct').textContent='period realised + dividends';
   $('kpi-realized-pct').className='kpi-sub';
-  $('kpi-real-card').className='kpi '+(rl>=0?'gain':'loss');
+  // Breakdown line: realized + dividends
+  const reinvNote=divIncome.totalReinvested>0?` (${fmt(divIncome.totalReinvested,out)} reinvested)`:'';
+  const bkdown=divIncome.total>0
+    ?`${fmt(realized.total,out)} trades · ${fmt(divIncome.total,out)} div${reinvNote}`
+    :`${fmt(realized.total,out)} trades`;
+  $('kpi-realized-breakdown').textContent=bkdown;
+  $('kpi-realized-breakdown').className='kpi-sub';
+  $('kpi-real-card').className='kpi '+(rlPos?'gain':'loss');
 
   $('kpi-total-return').textContent=fmt(totalReturn,out);
   $('kpi-total-return').className='kpi-value '+(totalReturn>=0?'gain':'loss');
   $('kpi-total-return-sub').textContent=totalReturnPct!=null?fmtPct(totalReturnPct):'—';
+  $('kpi-total-return-ann').textContent=annualisedPct!=null?fmtPct(annualisedPct)+` p.a. (since ${sinceLabel})`:'';
+  $('kpi-total-return-ann').className='kpi-sub '+(annualisedPct!=null?(annualisedPct>=0?'gain':'loss'):'');
   $('kpi-total-card').className='kpi '+(totalReturn>=0?'gain':'loss');
 
-  if(divs.length){
-    $('kpi-div-card').style.display='';
-    $('kpi-dividends').textContent=fmt(divIncome.total,out);
-    $('kpi-dividends-sub').textContent='Period income';
-  }
-
   // Compute all-time values separately for benchmark comparison
-  const allTimeRealized=APP.filters.period==='ALL'?realized:computeRealizedPL(txs,method,{start:null,end:null});
-  const allTimeDivTotal=(APP.settings.drpInTransactions?divs.filter(d=>!d.reinvested):divs).reduce((s,d)=>s+toOut(d.amount,d.currency),0);
+  const allTimeRealized=APP.filters.period==='ALL'?realized:computeRealizedPL(allTxs,method,{start:null,end:null});
+  const allTimeNetDeployed=APP.filters.period==='ALL'?netDeployed:computeNetDeployed(allTxs,{start:null,end:null});
+  const allTimeDivTotal=divs.reduce((s,d)=>s+toOut(d.amount,d.currency),0);
   const allTimeReturn=unrealized.totalUnrealized+allTimeRealized.total+allTimeDivTotal;
-  const portfolioAllTimeReturnPct=netDeployed>0?(allTimeReturn/netDeployed)*100:null;
+  const portfolioAllTimeReturnPct=allTimeNetDeployed>0?(allTimeReturn/allTimeNetDeployed)*100:null;
 
-  renderCapitalChart(unrealized);
+  APP._lastAllTxs=allTxs;
+  renderCapitalChart(unrealized,range);
   renderBenchmarkChart(portfolioAllTimeReturnPct);
   renderWinnersLosers(unrealized,allTimeRealized);
   if(divs.length&&Object.keys(divIncome.byMonth).length) renderDividendChart(divIncome); else $('div-chart-card').style.display='none';
-  renderHoldingsTable(unrealized);
-  renderTxTable(txs,range,realized);
+  renderHoldingsTable(unrealized, allTimeRealized);
+  renderTxTable(txs,range,realized); // real transactions only
 }
 
 function setKPI(valId,subId,cardId,amount,pct,out){
@@ -1219,13 +1457,22 @@ function baseOpts(){
 }
 
 // ── Charts ────────────────────────────────────────────────────────
-function renderCapitalChart(unrealized){
+function renderCapitalChart(unrealized,range){
   dc('invested');
-  const data=computeNetInvestedOverTime(APP.transactions);
+  const titleEl=$('capital-chart-title');
+  if(titleEl){
+    const pLabel=APP.filters.period==='ALL'?'All Time'
+      :APP.filters.period==='CUSTOM'?'Custom Period'
+      :APP.filters.period;
+    titleEl.textContent='Capital Deployed — '+pLabel;
+  }
+  const endDate=range&&range.end&&range.end<new Date()?range.end:null;
+  const data=computeNetInvestedOverTime((APP._lastAllTxs||APP.transactions),endDate);
   if(!data.length) return;
   const out=APP.settings.outputCurrency,sym=CURRENCY_SYMBOLS[out]||out;
   const hasPrices=Object.keys(APP.priceCache).length>0;
-  const currentValue=hasPrices&&unrealized?Object.values(unrealized.byTicker).reduce((s,h)=>s+h.marketValue,0):null;
+  const isLivePeriod=!range||!range.end||range.end>=new Date();
+  const currentValue=isLivePeriod&&hasPrices&&unrealized?Object.values(unrealized.byTicker).reduce((s,h)=>s+h.marketValue,0):null;
   const ctx=$('chart-invested').getContext('2d');
   APP.charts['invested']=new Chart(ctx,{
     type:'line',
@@ -1266,12 +1513,11 @@ function renderBenchmarkChart(portfolioReturnPct){
       ?APP.filters.customStart.toLocaleDateString('en-AU',{month:'short',year:'numeric'})+' – '+APP.filters.customEnd.toLocaleDateString('en-AU',{month:'short',year:'numeric'})
       :'custom range')
     :APP.filters.period;
-  const earlyWarning=APP.transactions.length>0&&new Date(Math.min(...APP.transactions.map(t=>t.date.getTime())))<new Date('2018-01-01')?' · portfolio pre-dates index data':'';
+  const earlyWarning=APP.transactions.length>0&&new Date(Math.min(...APP.transactions.map(t=>t.date.getTime())))<new Date('2010-01-01')?' · portfolio pre-dates index data':'';
   const noteTxt=hasData
-    ?`All-time portfolio return vs ${bmName} ${periodLabel} (${liveTxt}, price-return only${earlyWarning})`
+    ?`Portfolio vs ${bmName} — ${periodLabel} (${liveTxt}, price-return only${earlyWarning})`
     :'No index data for this period';
   $('bm-chart-sub').textContent=noteTxt;
-  $('chart-benchmark').title=hasData?'Note: index is price-return only (excludes dividends). Portfolio return includes dividends.':'';
 
   if(!hasData){
     $('bm-no-data').innerHTML='<span style="font-size:24px;">📊</span>No index data available for this period';
@@ -1280,7 +1526,7 @@ function renderBenchmarkChart(portfolioReturnPct){
 
   const vals=[portfolioReturnPct??0,bmReturn];
   const pLabel=portfolioReturnPct!=null?'Your Portfolio (all-time)':'Your Portfolio (n/a)';
-  const labels=[pLabel,`${bmName} (${periodLabel})`];
+  const labels=[pLabel,`${bmName} — ${periodLabel}`];
   const ctx=$('chart-benchmark').getContext('2d');
   APP.charts['benchmark']=new Chart(ctx,{
     type:'bar',
@@ -1294,26 +1540,140 @@ function renderBenchmarkChart(portfolioReturnPct){
 }
 
 function renderWinnersLosers(unrealized,allTimeRealized){
+  APP._lastUnrealized=unrealized; APP._lastAllTimeRealized=allTimeRealized;
   dc('wl');
-  const combined={};
-  for(const [t,h] of Object.entries(unrealized.byTicker)) combined[t]=(h.unrealizedPL||0)+(allTimeRealized.byTicker[t]||0);
-  for(const [t,v] of Object.entries(allTimeRealized.byTicker)) if(!(t in combined)) combined[t]=v;
-  const sorted=Object.entries(combined).sort((a,b)=>b[1]-a[1]);
-  const top=sorted.slice(0,8);
-  const bottom=sorted.slice(-5).filter(b=>!top.find(t=>t[0]===b[0]));
-  const show=[...top,...bottom].sort((a,b)=>b[1]-a[1]).slice(0,12);
-  const out=APP.settings.outputCurrency,sym=CURRENCY_SYMBOLS[out]||'';
+  const mode=APP.filters.wlMode||'combined';
+  const valMode=APP.filters.wlValMode||'dollar';
+
+  // Build dollar P&L per ticker
+  const dollarData={};
+  if(mode==='combined'||mode==='unrealized')
+    for(const [t,h] of Object.entries(unrealized.byTicker))
+      dollarData[t]=(dollarData[t]||0)+(h.unrealizedPL||0);
+  if(mode==='combined'||mode==='realized')
+    for(const [t,v] of Object.entries(allTimeRealized.byTicker))
+      dollarData[t]=(dollarData[t]||0)+v;
+  // Include fully-closed positions only in combined mode (unrealized loop missed them)
+  if(mode==='combined')
+    for(const [t,v] of Object.entries(allTimeRealized.byTicker))
+      if(!(t in dollarData)) dollarData[t]=v;
+
+  if(!Object.keys(dollarData).length) return;
+
+  // % relative to cost basis (open lots only)
+  const pctData={};
+  for(const [t,v] of Object.entries(dollarData)){
+    const cb=unrealized.byTicker[t]?.costBasis;
+    pctData[t]=(cb&&cb>0)?(v/cb)*100:null;
+  }
+
+  const modeLabel=mode==='combined'?'Realised + Unrealised':mode==='unrealized'?'Unrealised only':'Realised only';
+  $('wl-chart-sub').textContent=`All-time P&L by stock — ${modeLabel} (${valMode==='pct'?'%':'$'})`;
+
+  // Sort by display values
+  const displayMap=valMode==='pct'?pctData:dollarData;
+  const entries=Object.entries(dollarData)
+    .map(([t,dv])=>({t,dv,disp:displayMap[t]??0}))
+    .sort((a,b)=>b.disp-a.disp);
+  const top=entries.slice(0,5);
+  const bottom=[...entries].reverse().slice(0,5).filter(e=>!top.find(x=>x.t===e.t));
+  const show=[...top,...bottom].sort((a,b)=>b.disp-a.disp);
+  if(!show.length) return;
+
+  const out=APP.settings.outputCurrency;
+  const sym=CURRENCY_SYMBOLS[out]||'';
+  const shortLabel=t=>t.split(':')[1]||t;
+
+  // Plugin: draw ticker inside bar if tall enough, else above/below
+  const inBarPlugin={
+    id:'wl-labels',
+    afterDatasetsDraw(chart){
+      const cx=chart.ctx;
+      chart.data.labels.forEach((lbl,i)=>{
+        const meta=chart.getDatasetMeta(0);
+        if(!meta||!meta.data[i]) return;
+        const bar=meta.data[i];
+        const barHeight=Math.abs(bar.base-bar.y);
+        const isPos=bar.y<=bar.base;
+        const centerX=bar.x;
+        const centerY=(bar.y+bar.base)/2;
+        const short=shortLabel(lbl);
+        cx.save();
+        cx.textAlign='center';
+        cx.textBaseline='middle';
+        if(barHeight>50){
+          // Rotate text 90° inside bar
+          cx.font='600 11px "IBM Plex Mono",monospace';
+          cx.fillStyle='rgba(255,255,255,0.95)';
+          cx.translate(centerX,centerY);
+          cx.rotate(-Math.PI/2);
+          cx.fillText(short,0,0);
+        } else if(barHeight>22){
+          // Small horizontal text inside
+          cx.font='500 9px "IBM Plex Mono",monospace';
+          cx.fillStyle='rgba(255,255,255,0.95)';
+          cx.fillText(short,centerX,centerY);
+        } else {
+          // Outside: above positive, below negative
+          cx.font='500 10px "IBM Plex Mono",monospace';
+          cx.fillStyle=gc('--text-2')||'#4A5568';
+          cx.fillText(short,centerX,isPos?bar.y-8:bar.base+10);
+        }
+        cx.restore();
+      });
+    }
+  };
+
   const ctx=$('chart-wl').getContext('2d');
   APP.charts['wl']=new Chart(ctx,{
-    type:'bar',indexAxis:'y',
+    type:'bar',
     data:{
-      labels:show.map(([t])=>t.split(':')[1]||t),
-      datasets:[{data:show.map(([,v])=>v),backgroundColor:show.map(([,v])=>v>=0?gc('--gain'):gc('--loss')),borderRadius:3,borderWidth:0}]
+      labels:show.map(e=>e.t),
+      datasets:[{
+        data:show.map(e=>e.disp),
+        backgroundColor:show.map(e=>e.dv>=0?gc('--gain'):gc('--loss')),
+        borderRadius:3,borderWidth:0
+      }]
     },
+    plugins:[inBarPlugin],
     options:{
       ...baseOpts(),
-      plugins:{...baseOpts().plugins,tooltip:{...baseOpts().plugins.tooltip,callbacks:{label:c=>fmt(c.raw,out)}}},
-      scales:{...baseOpts().scales,x:{...baseOpts().scales.x,ticks:{...baseOpts().scales.x.ticks,callback:v=>sym+Math.round(v)}}}
+      layout:{padding:{top:24,bottom:4}},
+      plugins:{
+        ...baseOpts().plugins,
+        tooltip:{
+          ...baseOpts().plugins.tooltip,
+          callbacks:{
+            title:items=>shortLabel(items[0].label),
+            label:c=>{
+              const e=show[c.dataIndex];
+              const dollar=e?fmt(e.dv,out):'—';
+              const pct=e?pctData[e.t]:null;
+              return valMode==='pct'
+                ?`${fmtPct(c.raw)} (${dollar})`
+                :`${dollar}${pct!=null?' ('+fmtPct(pct)+')':''}`;
+            }
+          }
+        }
+      },
+      scales:{
+        x:{
+          grid:{display:false},
+          ticks:{
+            display:false  // tickers drawn inside bars by plugin
+          }
+        },
+        y:{
+          grid:{color:grd()},
+          ticks:{
+            color:gc('--text-3'),
+            font:{family:'IBM Plex Mono',size:10},
+            callback:v=>valMode==='pct'
+              ?v.toFixed(1)+'%'
+              :(v<0?'-':'')+sym+(Math.abs(v)>=1000?(Math.abs(v)/1000).toFixed(0)+'K':Math.round(Math.abs(v)))
+          }
+        }
+      }
     }
   });
 }
@@ -1330,27 +1690,76 @@ function renderDividendChart(divIncome){
     data:{labels:months,datasets:[{data:months.map(m=>divIncome.byMonth[m]),backgroundColor:gc('--gain')+'99',borderColor:gc('--gain'),borderWidth:1,borderRadius:3}]},
     options:{
       ...baseOpts(),
-      plugins:{...baseOpts().plugins,tooltip:{...baseOpts().plugins.tooltip,callbacks:{label:c=>sym+(c.raw?.toFixed(2)||'')}}},
-      scales:{...baseOpts().scales,y:{...baseOpts().scales.y,ticks:{...baseOpts().scales.y.ticks,callback:v=>sym+v}}}
+      plugins:{...baseOpts().plugins,tooltip:{...baseOpts().plugins.tooltip,callbacks:{label:c=>fmt(c.raw,out)}}},
+      scales:{...baseOpts().scales,y:{...baseOpts().scales.y,ticks:{...baseOpts().scales.y.ticks,callback:v=>fmt(v,out)}}}
     }
   });
 }
 
 // ── Table Renderers ───────────────────────────────────────────────
-function renderHoldingsTable(unrealized){
+function sortHoldings(col){
+  const s=APP.filters.holdingsSort;
+  s.dir=(s.col===col)?-s.dir:-1;
+  s.col=col;
+  // Update indicators
+  document.querySelectorAll('.sort-ind').forEach(el=>{
+    el.textContent=el.dataset.col===col?(s.dir===-1?'▼':'▲'):'';
+  });
+  if(APP._lastUnrealized) renderHoldingsTable(APP._lastUnrealized, APP._lastAllTimeRealized||{byTicker:{},byTxId:{},total:0});
+}
+
+function renderHoldingsTable(unrealized, realized){
+  APP._lastUnrealized=unrealized;
   const out=APP.settings.outputCurrency;
   const hasPr=Object.keys(APP.priceCache).length>0;
   const mvHeader=$('holdings-mv-header');
-  if(mvHeader) mvHeader.textContent=hasPr?'Market Value':'Value (at cost)';
-  const entries=Object.entries(unrealized.byTicker).sort((a,b)=>b[1].marketValue-a[1].marketValue);
+  if(mvHeader) mvHeader.textContent=(hasPr?'Market Value':'Value (at cost)')+' ';
+  const rlByTicker=(realized&&realized.byTicker)||{};
+  const {col,dir}=APP.filters.holdingsSort;
+  const getVals=(ticker,h)=>{
+    const rlFixed=rlByTicker[ticker]||0; // already in output currency from computeRealizedPL
+    const ur=h.currentPrice!=null?h.unrealizedPL:null;
+    const total=(ur!=null)?ur+rlFixed:null;
+    const cb=h.costBasis||0;
+    const rlPct=cb>0?(rlFixed/cb)*100:null;
+    const urPct=cb>0&&ur!=null?(ur/cb)*100:null;
+    const totalPct=cb>0&&total!=null?(total/cb)*100:null;
+    return {rl:rlFixed,ur,total,rlPct,urPct,totalPct,cb};
+  };
+  const valOf=(ticker,h)=>{
+    const v=getVals(ticker,h);
+    if(col==='ticker') return ticker;
+    if(col==='shares') return h.shares;
+    if(col==='avgCost') return h.avgCost;
+    if(col==='currentPrice') return h.currentPrice??-Infinity;
+    if(col==='marketValue') return h.marketValue;
+    if(col==='realizedPL') return v.rl;
+    if(col==='realizedPct') return v.rlPct??-Infinity;
+    if(col==='unrealizedPL') return v.ur??-Infinity;
+    if(col==='unrealizedPct') return v.urPct??-Infinity;
+    if(col==='totalPL') return v.total??-Infinity;
+    if(col==='totalPct') return v.totalPct??-Infinity;
+    return h.marketValue;
+  };
+  const entries=Object.entries(unrealized.byTicker).sort((a,b)=>{
+    const av=valOf(a[0],a[1]),bv=valOf(b[0],b[1]);
+    if(typeof av==='string') return dir*(av.localeCompare(bv));
+    return dir*(bv-av);
+  });
   const tbody=$('holdings-tbody');
   tbody.innerHTML='';
   if(!entries.length){
-    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text-3);padding:24px;">No open positions</td></tr>';
+    tbody.innerHTML='<tr><td colspan="11" style="text-align:center;color:var(--text-3);padding:24px;">No open positions</td></tr>';
     return;
   }
+  const plCell=(val,show)=>show&&val!=null
+    ?`<td class="${val>=0?'gain':'loss'}">${fmt(val,out)}</td>`
+    :'<td class="muted">—</td>';
+  const pctCell=(val,show)=>show&&val!=null
+    ?`<td class="${val>=0?'gain':'loss'}">${fmtPct(val)}</td>`
+    :'<td class="muted">—</td>';
   for(const [ticker,h] of entries){
-    const pct=h.costBasis>0?(h.unrealizedPL/h.costBasis)*100:0;
+    const v=getVals(ticker,h);
     const srcHtml=h.source==='manual'?'<span class="price-src manual">manual</span>':'<span class="price-src none">no price</span>';
     const tr=document.createElement('tr');
     tr.innerHTML=`
@@ -1358,9 +1767,13 @@ function renderHoldingsTable(unrealized){
       <td class="r">${fmtShares(h.shares)}</td>
       <td class="r">${fmtPrice(h.avgCost,h.currency)}</td>
       <td class="r">${h.currentPrice!=null?fmtPrice(h.currentPrice,h.priceCurrency):'—'}${srcHtml}</td>
-      <td class="r">${fmt(h.marketValue,out)}</td>
-      <td class="${h.currentPrice!=null?(h.unrealizedPL>=0?'gain':'loss'):'muted'}">${h.currentPrice!=null?fmt(h.unrealizedPL,out):'—'}</td>
-      <td class="${h.currentPrice!=null?(pct>=0?'gain':'loss'):'muted'}">${h.currentPrice!=null?fmtPct(pct):'—'}</td>
+      <td class="r ${h.currentPrice!=null?'':'muted'}">${h.currentPrice!=null?fmt(h.marketValue,out):'—'}</td>
+      ${plCell(v.rl,true)}
+      ${pctCell(v.rlPct,true)}
+      ${plCell(v.ur,h.currentPrice!=null)}
+      ${pctCell(v.urPct,h.currentPrice!=null)}
+      ${plCell(v.total,h.currentPrice!=null)}
+      ${pctCell(v.totalPct,h.currentPrice!=null)}
     `;
     tbody.appendChild(tr);
   }
@@ -1398,8 +1811,28 @@ function renderTxTable(txs,range,realized){
 }
 
 // ── UI State ──────────────────────────────────────────────────────
-function showDashboard(){$('dashboard').style.display='';$('empty-state').style.display='none';}
-function showEmpty(){$('dashboard').style.display='none';$('empty-state').style.display='';}
+function showDashboard(){
+  $('dashboard').style.display='';
+  $('empty-state').style.display='none';
+  // Move csv-reference below dashboard (after it in DOM)
+  const ref=$('csv-reference');
+  const dash=$('dashboard');
+  if(ref&&dash&&dash.nextSibling!==ref){
+    dash.parentNode.insertBefore(ref,dash.nextSibling);
+  }
+  // Collapse the upload section to just the cards (no extra vertical space)
+  $('upload-section').style.marginBottom='0';
+}
+function showEmpty(){
+  $('dashboard').style.display='none';
+  $('empty-state').style.display='';
+  // Move csv-reference back above dashboard
+  const ref=$('csv-reference');
+  const uploadSection=$('upload-section');
+  if(ref&&uploadSection&&uploadSection.nextSibling!==ref){
+    uploadSection.parentNode.insertBefore(ref,uploadSection.nextSibling);
+  }
+}
 
 // ── Settings Modal ────────────────────────────────────────────────
 function openSettings(){$('settings-modal').classList.add('open');}
@@ -1446,7 +1879,10 @@ function handleTxUpload(e){
   const reader=new FileReader();
   reader.onload=ev=>{
     try{
-      APP.transactions=parseTransactionsCSV(ev.target.result);
+      const parsed=parseTransactionsCSV(ev.target.result);
+      APP.transactions=parsed.rows;
+      APP.parseIssues.tx=parsed.issues||[];
+      renderSkipLog('tx',parsed.issues);
       if(!APP.transactions.length){ showGoButton(); return; }
       $('tx-status').textContent='✓ '+file.name+' · '+APP.transactions.length+' rows';
       $('tx-status').classList.add('show');
@@ -1461,7 +1897,10 @@ function handleDivUpload(e){
   const reader=new FileReader();
   reader.onload=ev=>{
     try{
-      APP.dividends=parseDividendsCSV(ev.target.result);
+      const dparsed=parseDividendsCSV(ev.target.result);
+      APP.dividends=dparsed.rows;
+      APP.parseIssues.div=dparsed.issues||[];
+      renderSkipLog('div',dparsed.issues);
       $('div-status').textContent='✓ '+file.name+' · '+APP.dividends.length+' rows';
       $('div-status').classList.add('show');
       $('div-clear-btn').classList.add('show');
@@ -1473,6 +1912,7 @@ function handleDivUpload(e){
 function clearTx(){
   APP.transactions=[];
   $('tx-file-input').value='';
+  $('tx-skip-log').style.display='none';
   $('tx-status').textContent=''; $('tx-status').classList.remove('show');
   $('tx-clear-btn').classList.remove('show');
   showGoButton();
@@ -1481,13 +1921,34 @@ function clearTx(){
 function clearDiv(){
   APP.dividends=[];
   $('div-file-input').value='';
+  $('div-skip-log').style.display='none';
   $('div-status').textContent=''; $('div-status').classList.remove('show');
   $('div-clear-btn').classList.remove('show');
   showGoButton();
-  $('kpi-div-card').style.display='none';
   $('div-chart-card').style.display='none';
   rebuildDashboard();
 }
+function renderSkipLog(prefix, issues){
+  const log=$(prefix+'-skip-log');
+  const tbl=$(prefix+'-skip-table');
+  const lbl=$(prefix+'-skip-label');
+  if(!issues||!issues.length){ log.style.display='none'; return; }
+  // Real issues vs NYSE assumptions
+  const real=issues.filter(i=>!i.includes('assumed NYSE'));
+  const assumed=issues.filter(i=>i.includes('assumed NYSE'));
+  const shown=[...real,...assumed]; // show all issues
+  if(!shown.length){ log.style.display='none'; return; }
+  lbl.textContent=(real.length?real.length+' row'+(real.length!==1?'s':'')+' skipped':'')
+    +(real.length&&assumed.length?' · ':'')
+    +(assumed.length?assumed.length+' ticker'+(assumed.length!==1?'s':'')+' assumed NYSE':'');
+  tbl.innerHTML=shown.slice(0,20).map(i=>{
+    const m=i.match(/Row (\d+): (.*)/);
+    return m?`<tr><td>Row ${m[1]}</td><td>${m[2]}</td></tr>`:`<tr><td>—</td><td>${i}</td></tr>`;
+  }).join('');
+  if(shown.length>20) tbl.innerHTML+=`<tr><td>…</td><td>${shown.length-20} more — check console</td></tr>`;
+  log.style.display='block';
+}
+
 function showGoButton(){
   $('go-btn-row').style.display=(APP.transactions.length||APP.dividends.length)?'flex':'none';
 }
@@ -1506,8 +1967,9 @@ async function handleGo(){
   }
   // Fetch benchmark live price (single call, graceful fail)
   const bmSym=getEffectiveBenchmark();
-  fetchBenchmarkLivePrice(bmSym).catch(()=>{}); // fire and forget, render twice
   rebuildDashboard();
+  // Re-render once live benchmark price arrives
+  fetchBenchmarkLivePrice(bmSym).then(p=>{if(p!=null)rebuildDashboard();}).catch(()=>{});
 }
 
 // ── Init ──────────────────────────────────────────────────────────
